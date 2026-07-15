@@ -1,0 +1,7 @@
+google-genai
+anthropic
+requests
+beautifulsoup4
+mcp
+flask
+python-dotenv

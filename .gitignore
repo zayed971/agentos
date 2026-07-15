@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+state/
+corpus/
+drafts/
+graphify-out/
+ground_state.json

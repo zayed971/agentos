@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "agentos-brain": {
+      "command": "python",
+      "args": ["${workspaceFolder}/mcp_server.py"],
+      "description": "AgentOS brain - Questioner and North Star Challenger"
+    }
+  }
+}
