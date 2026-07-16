@@ -28,6 +28,7 @@ import argparse
 import json
 import re
 import sys
+import time
 from collections import Counter
 from datetime import date, datetime
 from pathlib import Path
@@ -236,10 +237,20 @@ def load_state():
     return json.loads(GROUND_STATE_PATH.read_text(encoding="utf-8"))
 
 
-def _write_locked(path, text):
-    """Write text to path with OS-appropriate file locking to prevent corruption."""
+def _write_locked(path, text, max_attempts=20, retry_delay=0.05):
+    """Write text to path with OS-appropriate file locking to prevent corruption.
+
+    Windows' msvcrt.locking is mandatory: a second writer's open() on the same
+    file raises PermissionError while the first writer holds the lock, it
+    doesn't just block. So a concurrent writer has to retry the whole
+    open-lock-write-unlock attempt, not fall back to an unprotected write on
+    the first PermissionError -- that fallback would itself race the still-
+    active lock holder. Only fall back unprotected if locking is unavailable
+    at all (e.g. the msvcrt/fcntl import itself fails).
+    """
     data = text.encode("utf-8")
-    try:
+
+    def write_with_lock():
         if sys.platform == "win32":
             import msvcrt
             with open(path, "wb") as f:
@@ -254,8 +265,20 @@ def _write_locked(path, text):
                 f.write(data)
                 f.flush()
                 fcntl.flock(f, fcntl.LOCK_UN)
-    except Exception:
-        path.write_bytes(data)
+
+    for attempt in range(max_attempts):
+        try:
+            write_with_lock()
+            return
+        except (PermissionError, BlockingIOError):
+            time.sleep(retry_delay)  # another writer holds the lock right now -- retry
+        except Exception:
+            path.write_bytes(data)  # locking primitive itself unavailable/broken
+            return
+    # Exhausted retries under sustained contention. Still better than crashing
+    # the caller; a torn write here is now rare (lock held briefly per writer)
+    # rather than the common case it was before this fix.
+    path.write_bytes(data)
 
 
 def save_state(state):
