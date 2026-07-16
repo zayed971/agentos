@@ -59,6 +59,18 @@ Record what happens - the signal the whole system learns from:
   python backbone.py --print-task-scheduler        # Windows: schtasks + the wake-timer step
   python backbone.py --install-cron "0 23 * * *"    # Linux/Mac
 
+## Testing
+
+  python -m unittest discover -v
+
+30 tests across 3 files: verify_claim (file/command/URL claim verification),
+state_layer (ground-state save/load, and concurrent writes to
+ground_state.json under real file locking), and action_gate (all three
+tiers of classify(), and the AUTO-to-TAP fail-safe when no notifier is
+configured). That's the load-bearing logic — most of the remaining 18
+modules (loop, builder, questioner, world_scanner, dashboard, etc.) have no
+tests yet.
+
 ---
 
 ## The honest boundaries (read these)
